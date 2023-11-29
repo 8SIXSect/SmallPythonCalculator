@@ -146,6 +146,7 @@ class ArithmeticOperator(Enum):
 def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
     """"""
 
+
     def report_error(unexpected_token_type: TokenType) -> NodeResult:
         """"""
 
@@ -181,7 +182,6 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
         current_token = tokens[0]
 
         if current_token.token_type not in EXPRESSION_TOKEN_TYPES:
-            print(current_token, tokens)
             return node_result_for_simple_expression 
 
         del tokens[0]
@@ -197,7 +197,7 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
         # is why it was reassigned down here
         # Also, you don't really have to have this if statement but it makes my linter happy
         if term_node_result.tokens is not None:
-            tokens = term_node_result.tokens.copy()
+            tokens = term_node_result.tokens
 
         second_term_node_result: NodeResult = parse_tokens_for_term(tokens)
         
@@ -206,9 +206,8 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
 
         second_term_node_for_complex_expression_node = second_term_node_result.node
 
-        # Redundant if statement that makes my linter happy
         if second_term_node_result.tokens is not None:
-            tokens = second_term_node_result.tokens.copy()
+            tokens = second_term_node_result.tokens
 
         complex_term_node = ExpressionNode(expression_node.first_term_node,
                                            expression_node_operator,
@@ -239,7 +238,6 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
 
         # We don't pop the token off b/c there's a chance it's not a * or /
         current_token = tokens[0]
-        print("\n\n\n", tokens, factor_node_result.tokens, tokens is factor_node_result.tokens, "\n\n\n")
 
         if current_token.token_type not in TERM_TOKEN_TYPES:
             return node_result_for_simple_term 
@@ -253,11 +251,8 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
         else:
             term_node_operator = ArithmeticOperator.DIVIDE
 
-        # Variable 'tokens' is reassigned here for clarity. It is not needed above, so that
-        # is why it was reassigned down here
-        # Also, you don't really have to have this if statement but it makes my linter happy
         if factor_node_result.tokens is not None:
-            tokens = factor_node_result.tokens.copy()
+            tokens = factor_node_result.tokens
 
         second_factor_node_result: NodeResult = parse_tokens_for_factor(tokens)
         
@@ -266,9 +261,8 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
 
         second_factor_node_for_complex_term_node = second_factor_node_result.node
 
-        # Redundant if statement that makes my linter happy
         if second_factor_node_result.tokens is not None:
-            tokens = second_factor_node_result.tokens.copy()
+            tokens = second_factor_node_result.tokens
 
         complex_term_node = TermNode(term_node.first_factor_node,
                                      term_node_operator,
@@ -288,17 +282,127 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
 
         return NodeResult(True, tokens, factor_node)
 
-    r = parse_tokens_for_expression(tokens)
-    print(r)
+
+    root_node_result: NodeResult = parse_tokens_for_expression(tokens)
+
+    if not root_node_result.was_successful:
+        return ParserResult(False, error_message=root_node_result.error_message)
+
+    root_node: ExpressionNode = root_node_result.node
+    return ParserResult(True, root_node)
+
+
+@dataclass
+class InterpreterResult:
+    was_successful: bool
+    output: int = 0
+    error_message: str = ""
+
+
+def report_error_for_interpreter(reason_for_error: str) -> InterpreterResult:
+    unsuccessful_interpreter_result = InterpreterResult(False, error_message=reason_for_error)
+    return unsuccessful_interpreter_result
+
+
+def interpret_node(node: Union[ExpressionNode, TermNode, FactorNode]) -> InterpreterResult:
+
+    DIVISION_BY_ZERO = "You cannot divide by zero"
+
+    
+    
+
+
+    if isinstance(node, FactorNode):
+            
+        number_as_int = int(node.number)
+        factor_node_result = InterpreterResult(True, number_as_int)
+
+        return factor_node_result
+
+
+    elif isinstance(node, TermNode):
+
+        first_factor: InterpreterResult = interpret_node(node.first_factor_node)
+
+        if node.operator is None:
+            simple_term_node_result = InterpreterResult(True, first_factor.output)
+            return simple_term_node_result
+
+        second_factor: InterpreterResult = interpret_node(node.second_factor_node)
+
+        if node.operator == ArithmeticOperator.DIVIDE:
+            
+            if second_factor.output == 0:
+                unsuccessful_result: InterpreterResult = report_error_for_interpreter(DIVISION_BY_ZERO)
+                return unsuccessful_result
+            
+            output = first_factor.output / second_factor.output
+        else:
+            output = first_factor.output * second_factor.output
+    
+        output = int(output)
+
+        complex_term_node_result = InterpreterResult(True, output)
+        return complex_term_node_result
+
+
+    elif isinstance(node, ExpressionNode):
+
+        first_term: InterpreterResult = interpret_node(node.first_term_node)
+
+        if not first_term.was_successful:
+            return first_term
+
+        if node.operator is None:
+            expression_node_result = InterpreterResult(True, first_term.output)
+            return expression_node_result
+
+        second_term: InterpreterResult = interpret_node(node.second_term_node)
+
+        if node.operator == ArithmeticOperator.PLUS:
+            output = first_term.output + second_term.output
+        else:
+            output = first_term.output - second_term.output
+
+        output = int(output)
+
+        complex_expression_node_result = InterpreterResult(True, output)
+        return complex_expression_node_result
+
+
+    error_message = "This code should be unreachable"
+    this_result_should_be_unreachable = InterpreterResult(False, error_message=error_message)
+
+    return this_result_should_be_unreachable
+
+
+def main():
+    PROMPT = "? - "
+
+    while True:
+        user_input = input(PROMPT)
+
+        lexer_result: LexerResult = scan_and_tokenize_input(user_input)
+
+        if not lexer_result.was_successful:
+            print(lexer_result.error_message)
+            continue
+
+        parser_result: ParserResult = parse_list_of_tokens(lexer_result.tokens)
+
+        if not parser_result.was_successful:
+            print(parser_result.error_message)
+            continue
+
+        interpreter_result: InterpreterResult = interpret_node(parser_result.syntax_tree)
+
+        if not interpreter_result.was_successful:
+            print(interpreter_result.error_message)
+            continue
+
+        print(interpreter_result.output)
 
 
 if __name__ == "__main__":
-    USER_INPUT = "5/6+1"
-    lexer_result: LexerResult = scan_and_tokenize_input(USER_INPUT)
-    
-    if lexer_result.was_successful:
-        parse_list_of_tokens(lexer_result.tokens)
-
-    else:
-        print(lexer_result.error_message)
+    main()
 

@@ -1,0 +1,10 @@
+<expression> : <term> '+' <term>
+             | <term> '-' <term>
+             | <term>
+
+<term> : <factor> '*' <factor>
+       | <factor> '/' <factor>
+       | <factor>
+
+<factor> : NUMBER
+

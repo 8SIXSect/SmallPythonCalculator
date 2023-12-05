@@ -117,9 +117,9 @@ class NodeResult:
 
 @dataclass
 class ExpressionNode:
-    first_term_node: TermNode
+    single_term_node: TermNode
     operator: Optional[ArithmeticOperator] = None
-    second_term_node: Optional[TermNode] = None
+    additional_expression_node: Optional[ExpressionNode] = None
 
 
 @dataclass
@@ -179,6 +179,7 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
 
         node_result_for_simple_expression = NodeResult(True, term_node_result.tokens,
                                                        expression_node)
+        
         if node_result_for_simple_expression.tokens is None:
             unsuccessful_result: NodeResult = report_error("tokens is None")
             return unsuccessful_result
@@ -209,26 +210,26 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
 
         tokens = term_node_result.tokens 
 
-        second_term_node_result: NodeResult = parse_tokens_for_term(tokens)
+        additional_expression_node_result: NodeResult = parse_tokens_for_expression(tokens)
         
-        if not second_term_node_result.was_successful:
-            return second_term_node_result
+        if not additional_expression_node_result.was_successful:
+            return additional_expression_node_result
 
-        if second_term_node_result.tokens is None:
+        if additional_expression_node_result.tokens is None:
             unsuccessful_result: NodeResult = report_error("tokens null")
             return unsuccessful_result
 
-        tokens = second_term_node_result.tokens
+        tokens = additional_expression_node_result.tokens
 
-        second_term_node_for_complex_expression_node = second_term_node_result.node
+        additional_expression_node = additional_expression_node_result.node
 
-        if not isinstance(second_term_node_for_complex_expression_node, TermNode):
+        if not isinstance(additional_expression_node, ExpressionNode):
             unsuccessful_result: NodeResult = report_error("tokens null")
             return unsuccessful_result
 
-        complex_term_node = ExpressionNode(expression_node.first_term_node,
+        complex_term_node = ExpressionNode(expression_node.single_term_node,
                                            expression_node_operator,
-                                           second_term_node_for_complex_expression_node)
+                                           additional_expression_node)
 
         return NodeResult(True, tokens, complex_term_node)
  
@@ -380,21 +381,24 @@ def interpret_node(node: Union[ExpressionNode, TermNode, FactorNode]) -> Interpr
 
     elif isinstance(node, ExpressionNode):
 
-        first_term: InterpreterResult = interpret_node(node.first_term_node)
+        if node.additional_expression_node is None:
+            single_term: InterpreterResult = interpret_node(node.single_term_node)
 
-        if not first_term.was_successful:
-            return first_term
+            if not single_term.was_successful:
+                return single_term
 
-        if (node.operator is None) or (node.second_term_node is None):
-            expression_node_result = InterpreterResult(True, first_term.output)
+            expression_node_result = InterpreterResult(True, single_term.output)
             return expression_node_result
 
-        second_term: InterpreterResult = interpret_node(node.second_term_node)
+        additional_expression: InterpreterResult = interpret_node(
+                node.additional_expression_node)
+
+        single_term: InterpreterResult = interpret_node(node.single_term_node)
 
         if node.operator == ArithmeticOperator.PLUS:
-            output = first_term.output + second_term.output
+            output = additional_expression.output + single_term.output
         else:
-            output = first_term.output - second_term.output
+            output = additional_expression.output - single_term.output
 
         output = int(output)
 

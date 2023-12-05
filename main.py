@@ -1,6 +1,6 @@
 from __future__ import annotations
 import re
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union 
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -31,7 +31,7 @@ class Token:
     """ Building block of the lexer """
 
     token_type: TokenType 
-    token_value: Optional[str]
+    token_value: str = ""
 
 
 
@@ -146,6 +146,9 @@ class ArithmeticOperator(Enum):
 def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
     """"""
 
+    class ParserErrorReason(Enum):
+        UNEXPECTED_TOKEN_TYPE = "Unexpected Token Type"
+
 
     def report_error(unexpected_token_type: TokenType) -> NodeResult:
         """"""
@@ -167,11 +170,18 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
         if not term_node_result.was_successful:
             return term_node_result
 
+        if not isinstance(term_node_result.node, TermNode):
+            unsuccessful_result: NodeResult = report_error("not a term node")
+            return unsuccessful_result
+
         first_term_node: TermNode = term_node_result.node
         expression_node = ExpressionNode(first_term_node)
 
         node_result_for_simple_expression = NodeResult(True, term_node_result.tokens,
                                                        expression_node)
+        if node_result_for_simple_expression.tokens is None:
+            unsuccessful_result: NodeResult = report_error("tokens is None")
+            return unsuccessful_result
 
         length_of_tokens = len(node_result_for_simple_expression.tokens)
 
@@ -192,22 +202,29 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
             expression_node_operator = ArithmeticOperator.PLUS
         else:
             expression_node_operator = ArithmeticOperator.MINUS
+       
+        if term_node_result.tokens is None:
+            unsuccessful_result: NodeResult = report_error("nullish")
+            return unsuccessful_result
 
-        # Variable 'tokens' is reassigned here for clarity. It is not needed above, so that
-        # is why it was reassigned down here
-        # Also, you don't really have to have this if statement but it makes my linter happy
-        if term_node_result.tokens is not None:
-            tokens = term_node_result.tokens
+        tokens = term_node_result.tokens 
 
         second_term_node_result: NodeResult = parse_tokens_for_term(tokens)
         
         if not second_term_node_result.was_successful:
             return second_term_node_result
 
+        if second_term_node_result.tokens is None:
+            unsuccessful_result: NodeResult = report_error("tokens null")
+            return unsuccessful_result
+
+        tokens = second_term_node_result.tokens
+
         second_term_node_for_complex_expression_node = second_term_node_result.node
 
-        if second_term_node_result.tokens is not None:
-            tokens = second_term_node_result.tokens
+        if not isinstance(second_term_node_for_complex_expression_node, TermNode):
+            unsuccessful_result: NodeResult = report_error("tokens null")
+            return unsuccessful_result
 
         complex_term_node = ExpressionNode(expression_node.first_term_node,
                                            expression_node_operator,
@@ -217,21 +234,28 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
  
 
     def parse_tokens_for_term(tokens: List[Token]) -> NodeResult:
-
         TERM_TOKEN_TYPES: Tuple[TokenType, TokenType] = (MULTIPLY_TOKEN_TYPE,
                                                          DIVIDE_TOKEN_TYPE)
-        
+
         factor_node_result: NodeResult = parse_tokens_for_factor(tokens)
 
         if not factor_node_result.was_successful:
             return factor_node_result
+
+        if not isinstance(factor_node_result.node, FactorNode):
+            unsuccessful_result: NodeResult = report_error("NILL")
+            return unsuccessful_result
 
         first_factor_node: FactorNode = factor_node_result.node
         term_node = TermNode(first_factor_node)
 
         node_result_for_simple_term = NodeResult(True, factor_node_result.tokens, term_node)
 
-        length_of_tokens = len(node_result_for_simple_term.tokens)
+        if node_result_for_simple_term.tokens is None:
+            unsuccessful_result: NodeResult = report_error("Niller")
+            return unsuccessful_result
+
+        length_of_tokens: int = len(node_result_for_simple_term.tokens)
 
         if length_of_tokens == 0:
             return node_result_for_simple_term 
@@ -261,8 +285,15 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
 
         second_factor_node_for_complex_term_node = second_factor_node_result.node
 
-        if second_factor_node_result.tokens is not None:
-            tokens = second_factor_node_result.tokens
+        if second_factor_node_result.tokens is None:
+            unsuccessful_result: NodeResult = report_error("Null Error")
+            return unsuccessful_result
+
+        tokens = second_factor_node_result.tokens
+
+        if not isinstance(second_factor_node_for_complex_term_node, FactorNode):
+            unsuccessful_result: NodeResult = report_error("nil")
+            return unsuccessful_result
 
         complex_term_node = TermNode(term_node.first_factor_node,
                                      term_node_operator,
@@ -288,6 +319,11 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
     if not root_node_result.was_successful:
         return ParserResult(False, error_message=root_node_result.error_message)
 
+    if not isinstance(root_node_result.node, ExpressionNode):
+
+        unsuccessful_result: NodeResult = report_error(str(root_node_result.node))
+        return ParserResult(False, error_message=unsuccessful_result.error_message)
+
     root_node: ExpressionNode = root_node_result.node
     return ParserResult(True, root_node)
 
@@ -308,10 +344,6 @@ def interpret_node(node: Union[ExpressionNode, TermNode, FactorNode]) -> Interpr
 
     DIVISION_BY_ZERO = "You cannot divide by zero"
 
-    
-    
-
-
     if isinstance(node, FactorNode):
             
         number_as_int = int(node.number)
@@ -324,7 +356,7 @@ def interpret_node(node: Union[ExpressionNode, TermNode, FactorNode]) -> Interpr
 
         first_factor: InterpreterResult = interpret_node(node.first_factor_node)
 
-        if node.operator is None:
+        if (node.operator is None) or (node.second_factor_node is None):
             simple_term_node_result = InterpreterResult(True, first_factor.output)
             return simple_term_node_result
 
@@ -353,7 +385,7 @@ def interpret_node(node: Union[ExpressionNode, TermNode, FactorNode]) -> Interpr
         if not first_term.was_successful:
             return first_term
 
-        if node.operator is None:
+        if (node.operator is None) or (node.second_term_node is None):
             expression_node_result = InterpreterResult(True, first_term.output)
             return expression_node_result
 
@@ -390,7 +422,7 @@ def main():
 
         parser_result: ParserResult = parse_list_of_tokens(lexer_result.tokens)
 
-        if not parser_result.was_successful:
+        if (not parser_result.was_successful) or (parser_result.syntax_tree is None):
             print(parser_result.error_message)
             continue
 

@@ -37,16 +37,28 @@ class Token:
 
 @dataclass
 class LexerResult:
+    """
+    This class represents the output of the lexer.
+    'tokens' and 'error_message' cannot both have no value.
+    By this, I mean that 'tokens' is an empty list, then an error occurred, and
+    'error_message' is not an empty string.
+    The opposite is also true: if 'tokens' is not an empty list then
+    'error_message' is an empty string.
+    """
+
     was_successful: bool
     tokens: List[Token] = field(default_factory=list) 
     error_message: str = ""
 
 
 def scan_and_tokenize_input(user_input: str) -> LexerResult:
-    """"""
+    """ This function's purpose is to be the entrypoint for the lexer. """
 
     def report_error(unknown_character: str) -> LexerResult:
-        """"""
+        """
+        This function's purpose is to report an error that occurred in the
+        lexer.
+        """
 
         ERROR_MESSAGE = "Found an unknown character, '{0}'"
 

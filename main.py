@@ -112,7 +112,18 @@ def scan_and_tokenize_input(user_input: str) -> LexerResult:
 
 @dataclass
 class ParserResult:
-    """"""
+    """
+    This class defines the parser output.
+
+    Either 'syntax_tree' or 'error_message' must have a value; they cannot both be
+    empty.
+    
+    Specifically, if 'syntax_tree' is None, it indicates an error, and
+    'error_message' must be a non-empty string.
+    
+    Conversely, if 'tokens' is not None, 'error_message' must be an
+    empty string.
+    """
 
     was_successful: bool
     syntax_tree: Optional[ExpressionNode] = None
@@ -121,14 +132,46 @@ class ParserResult:
 
 @dataclass
 class NodeResult:
+    """
+    This class defines the output of a node.
+
+    Either ('tokens' and 'node') or 'error_message' must have a value; they
+    cannot all be empty.
+    
+    Specifically, if ('tokens' is an empty list) or (node is None), it
+    indicates an error, and 'error_message' must be a non-empty string.
+    
+    Conversely, if ('tokens' is not an empty list) and (node is not None),
+    'error_message' must be an empty string.
+    """
+
     was_successful: bool
-    tokens: Optional[List[Token]] = None
+    tokens: Optional[List[Token]] = field(default_factory=list)
     node: Union[ExpressionNode, TermNode, FactorNode, None] = None
     error_message: str = ""
 
 
 @dataclass
 class ExpressionNode:
+    """
+    Represents a node in the abstract syntax tree (AST) for mathematical
+    expressions.
+
+    Attributes:
+    
+    - single_term_node (TermNode): The term node representing a single
+    mathematical term.
+    
+    - operator (Optional[ArithmeticOperator]): The arithmetic operator
+    connecting this node with the next. Defaults to None if no operator is
+    present.
+    
+    - additional_expression_node (Optional[ExpressionNode]): Another expression
+    node connected to this one through the specified operator.
+    Defaults to None if no additional expression is present. 
+
+    """
+
     single_term_node: TermNode
     operator: Optional[ArithmeticOperator] = None
     additional_expression_node: Optional[ExpressionNode] = None
@@ -136,6 +179,22 @@ class ExpressionNode:
 
 @dataclass
 class TermNode:
+    """
+    Represents a node in the abstract syntax tree (AST) for mathematical terms.
+
+    Attributes:
+    - first_factor_node (FactorNode): The factor node representing the first
+    factor in the term.
+    
+    - operator (Optional[ArithmeticOperator]): The arithmetic operator
+    connecting this term node with the next term node. Defaults to None if no
+    operator is present.
+    
+    - second_factor_node (Optional[FactorNode]): Another factor node
+    representing the second factor in the term, connected by the specified
+    operator. Defaults to None if no second factor is present.
+    """    
+
     first_factor_node: FactorNode
     operator: Optional[ArithmeticOperator] = None
     second_factor_node: Optional[FactorNode] = None
@@ -143,11 +202,27 @@ class TermNode:
 
 @dataclass
 class FactorNode:
+    """
+    Represents a node in the abstract syntax tree (AST) for a numerical factor.
+
+    Attributes:
+    - number (str): The numerical value associated with this factor.
+    """
     number: str
 
 
 class ArithmeticOperator(Enum):
-    
+    """
+    Enumeration class representing arithmetic operators in a mathematical
+    expression.
+
+    Enum Members:
+    - PLUS: Represents the addition operator '+'
+    - MINUS: Represents the subtraction operator '-'
+    - MULTIPLY: Represents the multiplication operator '*'
+    - DIVIDE: Represents the division operator '/'
+    """
+
     # The values of these enum members does not matter
     PLUS = "+"
     MINUS = "-"
@@ -156,9 +231,24 @@ class ArithmeticOperator(Enum):
 
 
 def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
-    """"""
+    """ This functions purpose is to be the entrypoint for the parser """
 
     class ParserErrorReason:
+        """
+        Enumeration class representing reasons for parser errors.
+
+        Enum Members:
+        
+        - UNEXPECTED_TOKEN_TYPE: Indicates an unexpected token type during
+        parsing. Usage: UNEXPECTED_TOKEN_TYPE.format(token_type)
+        
+        - VALUE_IS_NULL: Indicates finding a null value during parsing. Usage:
+        VALUE_IS_NULL.format(value_name)
+        
+        - UNEXPECTED_TYPE: Indicates an unexpected node type during parsing.
+        Usage: UNEXPECTED_TYPE.format(node_type)
+        """
+        
         UNEXPECTED_TOKEN_TYPE = "Unexpected Token Type, {0}"
         VALUE_IS_NULL = "Found A Null Value; {0} is Null"
         UNEXPECTED_TYPE = "Unexpected Node of Type, {0}"
@@ -167,7 +257,9 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
     def report_error(unexpected_token_type: Optional[TokenType] = None,
                      unexpected_null: Optional[AnyStr] = None,
                      unexpected_type: Optional[AnyStr] = None) -> NodeResult:
-        """"""
+        """
+        This function's purpose is to report an error found in the parser
+        """
 
         error_message = ""
 
@@ -186,7 +278,19 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
 
 
     def parse_tokens_for_expression(tokens: List[Token]) -> NodeResult:
+        """
+        Parses a list of tokens to construct an abstract syntax tree (AST) for
+        a mathematical expression.
 
+        Args:
+        - tokens (List[Token]): List of tokens to be parsed.
+
+        Returns:
+        - NodeResult: A result object containing information about the success
+        of the parsing operation. If successful, the result includes the parsed
+        expression node; otherwise, it contains an error message.
+        """
+        
         EXPRESSION_TOKEN_TYPES: Tuple[TokenType, TokenType] = (PLUS_TOKEN_TYPE, MINUS_TOKEN_TYPE)
  
         term_node_result: NodeResult = parse_tokens_for_term(tokens)
@@ -272,6 +376,20 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
  
 
     def parse_tokens_for_term(tokens: List[Token]) -> NodeResult:
+        """
+        Parses a list of tokens to construct an abstract syntax tree (AST) for
+        a mathematical term.
+
+        Args:
+        - tokens (List[Token]): List of tokens to be parsed.
+
+        Returns:
+        - NodeResult: A result object containing information about the success
+        of the parsing operation. If successful, the result includes the parsed
+        term node; otherwise, it contains an error message.
+        """
+
+
         TERM_TOKEN_TYPES: Tuple[TokenType, TokenType] = (MULTIPLY_TOKEN_TYPE,
                                                          DIVIDE_TOKEN_TYPE)
 
@@ -345,6 +463,18 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
             
 
     def parse_tokens_for_factor(tokens: List[Token]) -> NodeResult:
+        """
+        Parses a list of tokens to construct an abstract syntax tree (AST) for
+        a mathematical term.
+
+        Args:
+        - tokens (List[Token]): List of tokens to be parsed.
+
+        Returns:
+        - NodeResult: A result object containing information about the success
+        of the parsing operation. If successful, the result includes the parsed
+        term node; otherwise, it contains an error message.
+        """
 
         current_token = tokens.pop(0)
 

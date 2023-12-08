@@ -502,18 +502,60 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
 
 @dataclass
 class InterpreterResult:
+    """
+    Represents the result of an interpretation operation.
+
+    Attributes:
+    
+    - was_successful (bool): Indicates whether the interpretation was
+    successful (True) or encountered an error (False).
+    
+    - output (int): The numerical result of the interpretation. Defaults to 0
+    if the interpretation was unsuccessful.
+    
+    - error_message (str): An informative message describing the reason for the
+    interpretation error. Defaults to an empty string if the interpretation was
+    successful.
+    """
+
     was_successful: bool
     output: int = 0
     error_message: str = ""
 
 
 def report_error_for_interpreter(reason_for_error: str) -> InterpreterResult:
+    """
+    Creates an InterpreterResult object to indicate an interpretation error
+    with the provided reason.
+
+    Args:
+    - reason_for_error (str): A descriptive message explaining the reason for
+    the interpretation error.
+
+    Returns:
+    - InterpreterResult: An InterpreterResult object indicating an unsuccessful
+    interpretation with the provided error message.
+    """
+
     unsuccessful_interpreter_result = InterpreterResult(False, error_message=reason_for_error)
     return unsuccessful_interpreter_result
 
 
 def interpret_node(node: Union[ExpressionNode, TermNode, FactorNode]) -> InterpreterResult:
+    """
+    Interprets a node in the abstract syntax tree (AST) for mathematical
+    expressions.
 
+    Args:
+    - node (Union[ExpressionNode, TermNode, FactorNode]): The node in the AST to
+    be interpreted.
+
+    Returns:
+    - InterpreterResult: A result object containing information about the
+    success of the interpretation operation. If successful, the result includes
+    the interpreted value; otherwise, it contains an error message.
+    """
+    
     DIVISION_BY_ZERO = "You cannot divide by zero"
 
     if isinstance(node, FactorNode):

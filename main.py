@@ -1,6 +1,6 @@
 from __future__ import annotations
 import re
-from typing import List, Optional, Tuple, Union 
+from typing import List, Optional, Tuple, Union, AnyStr 
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -146,16 +146,28 @@ class ArithmeticOperator(Enum):
 def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
     """"""
 
-    class ParserErrorReason(Enum):
-        UNEXPECTED_TOKEN_TYPE = "Unexpected Token Type"
+    class ParserErrorReason:
+        UNEXPECTED_TOKEN_TYPE = "Unexpected Token Type, {0}"
+        VALUE_IS_NULL = "Found A Null Value; {0} is Null"
+        UNEXPECTED_TYPE = "Unexpected Node of Type, {0}"
 
 
-    def report_error(unexpected_token_type: TokenType) -> NodeResult:
+    def report_error(unexpected_token_type: Optional[TokenType] = None,
+                     unexpected_null: Optional[AnyStr] = None,
+                     unexpected_type: Optional[AnyStr] = None) -> NodeResult:
         """"""
 
-        ERROR_MESSAGE = "Found an unexpected token, '{0}'"
+        error_message = ""
 
-        error_message: str = ERROR_MESSAGE.format(unexpected_token_type)
+        if unexpected_token_type is not None:
+            error_message: str = ParserErrorReason.UNEXPECTED_TOKEN_TYPE.format(
+                    unexpected_token_type)
+        
+        if unexpected_null is not None:
+            error_message: str = ParserErrorReason.VALUE_IS_NULL.format(unexpected_null)
+
+        if unexpected_type is not None:
+            error_message: str = ParserErrorReason.UNEXPECTED_TYPE.format(unexpected_type)
 
         node_result = NodeResult(False, error_message=error_message)
         return node_result
@@ -171,7 +183,11 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
             return term_node_result
 
         if not isinstance(term_node_result.node, TermNode):
-            unsuccessful_result: NodeResult = report_error("not a term node")
+
+            type_of_term_node = type(term_node_result.node)
+            UNEXPECTED_TYPE = str(type_of_term_node)
+
+            unsuccessful_result: NodeResult = report_error(unexpected_type=UNEXPECTED_TYPE)
             return unsuccessful_result
 
         first_term_node: TermNode = term_node_result.node
@@ -181,7 +197,9 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
                                                        expression_node)
         
         if node_result_for_simple_expression.tokens is None:
-            unsuccessful_result: NodeResult = report_error("tokens is None")
+            FOUND_NULL_VALUE = "Node Result for Simple Expression is None"            
+
+            unsuccessful_result: NodeResult = report_error(unexpected_null=FOUND_NULL_VALUE)
             return unsuccessful_result
 
         length_of_tokens = len(node_result_for_simple_expression.tokens)
@@ -205,7 +223,9 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
             expression_node_operator = ArithmeticOperator.MINUS
        
         if term_node_result.tokens is None:
-            unsuccessful_result: NodeResult = report_error("nullish")
+            FOUND_NULL_VALUE = "Term Node Result Tokens is None"
+
+            unsuccessful_result: NodeResult = report_error(unexpected_null=FOUND_NULL_VALUE)
             return unsuccessful_result
 
         tokens = term_node_result.tokens 
@@ -216,7 +236,9 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
             return additional_expression_node_result
 
         if additional_expression_node_result.tokens is None:
-            unsuccessful_result: NodeResult = report_error("tokens null")
+            FOUND_NULL_VALUE = "Additional Expression Node Result is None"
+
+            unsuccessful_result: NodeResult = report_error(unexpected_null=FOUND_NULL_VALUE)
             return unsuccessful_result
 
         tokens = additional_expression_node_result.tokens
@@ -224,7 +246,10 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
         additional_expression_node = additional_expression_node_result.node
 
         if not isinstance(additional_expression_node, ExpressionNode):
-            unsuccessful_result: NodeResult = report_error("tokens null")
+            type_of_additional_expression_node = type(additional_expression_node)
+            UNEXPECTED_TYPE = str(type_of_additional_expression_node)
+
+            unsuccessful_result: NodeResult = report_error(unexpected_type=UNEXPECTED_TYPE)
             return unsuccessful_result
 
         complex_term_node = ExpressionNode(expression_node.single_term_node,
@@ -244,7 +269,10 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
             return factor_node_result
 
         if not isinstance(factor_node_result.node, FactorNode):
-            unsuccessful_result: NodeResult = report_error("NILL")
+            type_of_factor_node_result_node = type(factor_node_result.node)
+            UNEXPECTED_TYPE = str(type_of_factor_node_result_node)
+
+            unsuccessful_result: NodeResult = report_error(unexpected_type=UNEXPECTED_TYPE)
             return unsuccessful_result
 
         first_factor_node: FactorNode = factor_node_result.node
@@ -253,7 +281,8 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
         node_result_for_simple_term = NodeResult(True, factor_node_result.tokens, term_node)
 
         if node_result_for_simple_term.tokens is None:
-            unsuccessful_result: NodeResult = report_error("Niller")
+            FOUND_NULL_VALUE = "Node Result for Simple Term's Tokens"
+            unsuccessful_result: NodeResult = report_error(unexpected_null=FOUND_NULL_VALUE)
             return unsuccessful_result
 
         length_of_tokens: int = len(node_result_for_simple_term.tokens)

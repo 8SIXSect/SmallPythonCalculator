@@ -28,3 +28,6 @@ Found an invalid character: '.'
 - Division (`/`)
 - Parentheses for grouping (`(` and `)`)
 - Positive or negative integers
+
+## Grammar
+The grammar used to create this interpreter can be found [here](calculator_grammar.bnf)

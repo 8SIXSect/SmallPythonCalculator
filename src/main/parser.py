@@ -1,8 +1,7 @@
 from typing import List, Optional, AnyStr
+from dataclasses import dataclass, field
 from .ast import (
     Token,
-    ParserResult,
-    NodeResult,
     ExpressionNode,
     TermNode,
     FactorNode,
@@ -16,34 +15,72 @@ from .ast import (
     RPAREN_TOKEN_TYPE,
 )
 
+
+@dataclass
+class ParserResult:
+    """
+    Represents the result of the parsing process.
+    """
+
+    was_successful: bool
+    syntax_tree: Optional[ExpressionNode] = None
+    error_message: str = ""
+
+
+@dataclass
+class NodeResult:
+    """
+    Represents the result of parsing a node, including remaining tokens and the parsed node.
+    """
+
+    was_successful: bool
+    tokens: Optional[List[Token]] = field(default_factory=list)
+    node: Optional[ExpressionNode | TermNode | FactorNode] = None
+    error_message: str = ""
+
+
 def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
-    class ParserErrorReason:
-        UNEXPECTED_TOKEN_TYPE = "Unexpected Token Type, {0}"
-        VALUE_IS_NULL = "Found A Null Value; {0} is Null"
-        UNEXPECTED_TYPE = "Unexpected Node of Type, {0}"
+    """
+    Entrypoint to the parser. Parses a list of tokens into an abstract syntax tree (AST) representing the arithmetic
+    expression.
+    """
+
+    # Parser error messages/reasons
+    UNEXPECTED_TOKEN_TYPE = "Unexpected Token Type, {0}"
+    VALUE_IS_NULL = "Found A Null Value; {0} is Null"
+    UNEXPECTED_TYPE = "Unexpected Node of Type, {0}"
 
     def report_error(unexpected_token_type: Optional[str] = None,
                      unexpected_null: Optional[AnyStr] = None,
                      unexpected_type: Optional[AnyStr] = None) -> NodeResult:
+        """
+        Clarity function to report parser errors.
+        """
+
         error_message = ""
+
         if unexpected_token_type is not None:
-            error_message = ParserErrorReason.UNEXPECTED_TOKEN_TYPE.format(unexpected_token_type)
-        if unexpected_null is not None:
-            error_message = ParserErrorReason.VALUE_IS_NULL.format(unexpected_null)
-        if unexpected_type is not None:
-            error_message = ParserErrorReason.UNEXPECTED_TYPE.format(unexpected_type)
+            error_message = UNEXPECTED_TOKEN_TYPE.format(unexpected_token_type)
+
+        elif unexpected_null is not None:
+            error_message = VALUE_IS_NULL.format(unexpected_null)
+
+        elif unexpected_type is not None:
+            error_message = UNEXPECTED_TYPE.format(unexpected_type)
+
         return NodeResult(False, error_message=error_message)
 
     # forward declarations via nested functions
     def parse_tokens_for_expression(tokens: List[Token]) -> NodeResult:
-        term_result = parse_tokens_for_term(tokens)
+        term_result: NodeResult = parse_tokens_for_term(tokens)
         if not term_result.was_successful:
             return term_result
+
         if not isinstance(term_result.node, TermNode):
             return report_error(unexpected_type=str(type(term_result.node)))
 
         expr_node = ExpressionNode(term_result.node)
-        remaining = term_result.tokens or []
+        remaining: list[Token] = term_result.tokens if term_result.tokens is not None else []
 
         while remaining and remaining[0].token_type in (PLUS_TOKEN_TYPE, MINUS_TOKEN_TYPE):
             op_token = remaining[0]
@@ -63,23 +100,25 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
         return NodeResult(True, remaining, expr_node)
 
     def parse_tokens_for_term(tokens: List[Token]) -> NodeResult:
-        factor_result = parse_tokens_for_factor(tokens)
+        factor_result: NodeResult = parse_tokens_for_factor(tokens)
         if not factor_result.was_successful:
             return factor_result
+
         if not isinstance(factor_result.node, FactorNode):
             return report_error(unexpected_type=str(type(factor_result.node)))
 
         term_node = TermNode(factor_result.node)
-        remaining = factor_result.tokens or []
+        remaining: list[Token] = factor_result.tokens if factor_result.tokens is not None else []
 
         while remaining and remaining[0].token_type in (MULTIPLY_TOKEN_TYPE, DIVIDE_TOKEN_TYPE):
-            op_token = remaining[0]
-            remaining = remaining[1:]
-            op = ArithmeticOperator.MULTIPLY if op_token.token_type == MULTIPLY_TOKEN_TYPE else ArithmeticOperator.DIVIDE
+            op_token: Token = remaining[0]
+            remaining: list[Token] = remaining[1:]
+            op: ArithmeticOperator = ArithmeticOperator.MULTIPLY if op_token.token_type == MULTIPLY_TOKEN_TYPE else ArithmeticOperator.DIVIDE
 
             second_factor_result = parse_tokens_for_factor(remaining)
             if not second_factor_result.was_successful:
                 return second_factor_result
+
             if not isinstance(second_factor_result.node, FactorNode):
                 return report_error(unexpected_type=str(type(second_factor_result.node)))
 
@@ -120,7 +159,8 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
                 return report_error(unexpected_type=str(type(inner_result.node)))
             inner_node: FactorNode = inner_result.node
             sign = -inner_node.sign if op_token.token_type == MINUS_TOKEN_TYPE else inner_node.sign
-            return NodeResult(True, inner_result.tokens, FactorNode(sign=sign, number=inner_node.number, nested_expression=inner_node.nested_expression))
+            return NodeResult(True, inner_result.tokens, FactorNode(sign=sign, number=inner_node.number,
+                                                                    nested_expression=inner_node.nested_expression))
         # primary
         return parse_tokens_for_primary(tokens)
 
@@ -132,4 +172,3 @@ def parse_list_of_tokens(tokens: List[Token]) -> ParserResult:
         err = report_error(unexpected_type=str(type(root_node_result.node)))
         return ParserResult(False, error_message=err.error_message)
     return ParserResult(True, root_node_result.node)
-

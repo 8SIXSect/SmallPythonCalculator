@@ -15,6 +15,7 @@ RPAREN_TOKEN_TYPE = "RPAREN"
 
 TokenType = str
 
+
 @dataclass
 class Token:
     """
@@ -23,6 +24,7 @@ class Token:
 
     token_type: TokenType
     token_value: str = ""
+
 
 @dataclass
 class LexerResult:
@@ -36,41 +38,49 @@ class LexerResult:
     tokens: List[Token] = field(default_factory=list)
     error_message: str = ""
 
-@dataclass
-class ParserResult:
-    was_successful: bool
-    syntax_tree: Optional["ExpressionNode"] = None
-    error_message: str = ""
-
-@dataclass
-class NodeResult:
-    was_successful: bool
-    tokens: Optional[List[Token]] = field(default_factory=list)
-    node: Optional[Union["ExpressionNode", "TermNode", "FactorNode"]] = None
-    error_message: str = ""
 
 @dataclass
 class FactorNode:
-    sign: int = 1
+    """
+    Represents a factor in an arithmetic expression, which can be a number or a nested expression.
+
+    Note that number is stored as a string opposed to an integer. It will be converted to an integer during interpretation.
+    """
+
+    sign: int = 1  # 1 for positive, -1 for negative
     number: Optional[str] = None
-    nested_expression: Optional["ExpressionNode"] = None
+    nested_expression: Optional[ExpressionNode] = None
+
 
 # allow nesting so we can build left-associative trees
 @dataclass
 class TermNode:
-    first_factor_node: Union[FactorNode, "TermNode"]
-    operator: Optional["ArithmeticOperator"] = None
+    """
+    Represents a term in an arithmetic expression, which can consist of factors combined by multiplication or division.
+    """
+
+    first_factor_node: FactorNode | TermNode
+    operator: Optional[ArithmeticOperator] = None
     second_factor_node: Optional[FactorNode] = None
+
 
 @dataclass
 class ExpressionNode:
-    single_term_node: Union[TermNode, "ExpressionNode"]
-    operator: Optional["ArithmeticOperator"] = None
-    additional_expression_node: Optional["ExpressionNode"] = None
+    """
+    Represents an arithmetic expression, which can consist of terms combined by addition or subtraction.
+    """
+
+    single_term_node: TermNode | ExpressionNode
+    operator: Optional[ArithmeticOperator] = None
+    additional_expression_node: Optional[ExpressionNode] = None
+
 
 class ArithmeticOperator(Enum):
+    """
+    Represents arithmetic operators for expressions.
+    """
+
     PLUS = "+"
     MINUS = "-"
     MULTIPLY = "*"
     DIVIDE = "/"
-

@@ -1,7 +1,7 @@
 from main.lexer import scan_and_tokenize_input
 from main.parser import parse_list_of_tokens
-from main.interpreter import interpret_node
-from main.ast import LexerResult, ParserResult, InterpreterResult
+from main.interpreter import interpret_node, InterpreterResult
+from main.ast import LexerResult, ParserResult
 
 def main():
     PROMPT = ">>> "

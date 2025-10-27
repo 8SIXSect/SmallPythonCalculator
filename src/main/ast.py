@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import List, Optional, Union, AnyStr
+from typing import List, Optional, Union
 from enum import Enum
 
 # token type constants (shared)
@@ -17,19 +17,23 @@ TokenType = str
 
 @dataclass
 class Token:
+    """
+    Represents a lexical token with its type and value.
+    """
+
     token_type: TokenType
     token_value: str = ""
 
 @dataclass
 class LexerResult:
+    """
+    Represents the result of the lexical analysis (lexing) process.
+
+    - error_message will always be an empty string if was_successful is True.
+    """
+
     was_successful: bool
     tokens: List[Token] = field(default_factory=list)
-    error_message: str = ""
-
-@dataclass
-class InterpreterResult:
-    was_successful: bool
-    output: int = 0
     error_message: str = ""
 
 @dataclass

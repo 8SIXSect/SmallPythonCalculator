@@ -1,10 +1,14 @@
 <expression> : <expression> '+' <term>
-             | <term> '-' <term>
+             | <expression> '-' <term>
              | <term>
 
-<term> : <factor> '*' <factor>
-       | <factor> '/' <factor>
-       | <factor>
+<term>       : <term> '*' <factor>
+             | <term> '/' <factor>
+             | <factor>
 
-<factor> : NUMBER
+<factor>     : '-' <factor>
+             | '+' <factor>
+             | <primary>
 
+<primary>    : NUMBER
+             | '(' <expression> ')'
